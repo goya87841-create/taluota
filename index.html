@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塔罗占卜 · 牌阵抽牌</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;
+  color:#6b5e63;
+  background-color:#faf6f2;
+  background-image:radial-gradient(circle,rgba(200,168,184,.22) 2.5px,transparent 2.5px);
+  background-size:30px 30px;
+  min-height:100vh;padding:36px 16px 60px;
+}
+.wrap{max-width:820px;margin:0 auto}
+h1{font-size:22px;font-weight:600;color:#8a6675;letter-spacing:2px;text-align:center}
+.sub{font-size:13px;color:#a89a9f;text-align:center;margin-top:8px;letter-spacing:1px}
+.screen{display:none;margin-top:26px}
+.screen.active{display:block}
+.card{
+  background:rgba(255,255,255,.84);
+  border:1px solid rgba(214,194,204,.55);
+  border-radius:18px;padding:26px 24px;margin-bottom:18px;
+}
+.spread{
+  display:block;width:100%;text-align:left;cursor:pointer;
+  background:rgba(255,255,255,.84);
+  border:1px solid rgba(214,194,204,.55);
+  border-radius:16px;padding:18px 20px;margin-bottom:14px;
+  transition:.2s;font-family:inherit;
+}
+.spread:hover{border-color:#c8a8b8;background:#fff;transform:translateY(-1px)}
+.spread .name{font-size:16px;color:#8a6675;font-weight:600;letter-spacing:1px}
+.spread .count{font-size:12px;color:#fff;background:#c8a8b8;border-radius:999px;padding:2px 10px;margin-left:8px}
+.spread .desc{font-size:13px;color:#7a6670;margin-top:8px;line-height:1.6}
+.spread .meta{font-size:12px;color:#a89a9f;margin-top:8px;line-height:1.6}
+.actions{text-align:center;margin-top:18px}
+button{font-family:inherit;font-size:14px;cursor:pointer;border:none;border-radius:12px;padding:12px 28px;letter-spacing:1px}
+.btn-main{background:#c8a8b8;color:#fff}
+.btn-main:hover{background:#b898a8}
+.btn-main:disabled{background:#dcccd4;cursor:not-allowed}
+.btn-ghost{background:transparent;color:#a57f8f;border:1px solid #d8c4cc;margin-left:8px}
+.btn-ghost:hover{background:#fff}
+.question{width:100%;font-family:inherit;font-size:14px;color:#7a6670;border:1px solid #d8c4cc;border-radius:12px;padding:14px;background:rgba(255,255,255,.9);outline:none;resize:vertical;min-height:70px}
+.question:focus{border-color:#c8a8b8}
+.hint{font-size:12px;color:#b8a4ac;margin-top:8px;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px;margin-top:6px}
+.cardback{
+  aspect-ratio:2/3;border-radius:8px;cursor:pointer;position:relative;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,.55) 0 5%, transparent 6%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.35) 0 5px, transparent 5px 10px),
+    linear-gradient(160deg,#d8c4cc,#b89aa8);
+  border:1.5px solid #c8a8b8;
+  box-shadow:0 1px 4px rgba(140,110,125,.15);
+  transition:.12s;
+}
+.cardback::after{content:"✦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.75);font-size:15px}
+.cardback:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(140,110,125,.25)}
+.cardback.picked{border-color:#7a5568;background:linear-gradient(160deg,#a8809a,#6b4f5e)}
+.cardback.picked::after{content:"✓";color:#fff}
+.cardback.disabled{opacity:.3;cursor:default;transform:none;box-shadow:none}
+
+/* 牌的正面 */
+.cardface{
+  width:74px;flex:0 0 74px;aspect-ratio:2/3;
+  background:linear-gradient(160deg,#fffdfa,#f2e6ea);
+  border:2px solid #c8a8b8;border-radius:9px;
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:6px 4px;color:#8a6675;box-shadow:0 2px 6px rgba(140,110,125,.18);
+  position:relative;
+}
+.cardface::before{content:"";position:absolute;inset:3px;border:1px solid rgba(200,168,184,.45);border-radius:6px;pointer-events:none}
+.cardface.reversed{transform:rotate(180deg)}
+.cf-num{font-size:9px;color:#b08a9a;letter-spacing:1px}
+.cf-sym{font-size:22px;line-height:1}
+.cf-nm{font-size:9px;text-align:center;line-height:1.25}
+
+.reading-card{display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.72);border:1px solid #ecdce4;border-radius:14px;padding:16px;margin-bottom:12px}
+.reading-card .body{flex:1}
+.reading-card .pos{font-size:12px;color:#b08a9a;font-weight:600;letter-spacing:1px}
+.reading-card .cn{font-size:15px;color:#8a6675;font-weight:600;margin-left:8px}
+.ori{font-size:11px;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle}
+.ori.up{background:#dfead9;color:#6f8a63}
+.ori.rev{background:#f2dde0;color:#a5737c}
+.tags{margin-top:8px}
+.tag{display:inline-block;font-size:11px;color:#a57f8f;background:rgba(242,230,234,.7);border-radius:999px;padding:2px 9px;margin:2px 4px 2px 0}
+.mean{font-size:13px;color:#6f6367;line-height:1.85;margin-top:8px}
+.ask{font-size:12px;color:#b08a9a;margin-top:7px;line-height:1.6}
+.tie{font-size:12.5px;color:#7a6670;background:rgba(223,234,217,.45);border-left:3px solid #c8a8b8;border-radius:6px;padding:9px 11px;margin-top:10px;line-height:1.85}
+.tie b{color:#8a6675}
+.meta2{font-size:11px;color:#bcacb2;margin-top:9px;letter-spacing:.5px}
+.chain{font-size:12.5px;color:#6f6367;line-height:2;margin-top:2px}
+.chain b{color:#8a6675}
+.summary h3{margin-top:16px}
+.summary h3:first-child{margin-top:0}
+.overview{background:rgba(223,234,217,.5);border:1px solid #d8e3d3;border-radius:12px;padding:12px 14px;font-size:13px;color:#6f6367;line-height:1.85;margin-bottom:10px}
+.overview b{color:#7a8f70}
+.hintline{font-size:11.5px;color:#b8a4ac;margin-bottom:16px;line-height:1.6}
+.domains-title{font-size:13px;color:#8a6675;font-weight:600;margin:18px 0 4px}
+.domain{background:rgba(255,255,255,.6);border:1px solid #ecdce4;border-radius:10px;padding:12px 14px;margin-top:10px;font-size:12.5px;color:#6f6367;line-height:1.85}
+.dk{font-size:13px;color:#8a6675;font-weight:600;margin-bottom:5px}
+
+.summary{background:rgba(242,230,234,.5);border:1px solid #ecdce4;border-radius:14px;padding:18px;font-size:13px;color:#6f6367;line-height:1.95}
+.summary h3{font-size:14px;color:#8a6675;margin-bottom:10px;font-weight:600}
+.q-display{font-size:13px;color:#a89a9f;text-align:center;margin-bottom:14px;font-style:italic;line-height:1.7}
+.reveal-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+.tipbox{font-size:12px;color:#a89a9f;line-height:1.8}
+.footer{text-align:center;font-size:11px;color:#c4b0b6;margin-top:30px;line-height:1.8}
+.countbar{font-size:13px;color:#8a6675;font-weight:600;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>✦ 塔罗占卜 ✦</h1>
+  <div class="sub">静下心来，选一个牌阵，然后抽牌</div>
+
+  <section id="screen-spread" class="screen active"><div id="spreadList"></div></section>
+
+  <section id="screen-question" class="screen">
+    <div class="card">
+      <div id="qSpreadName" style="font-size:15px;color:#8a6675;font-weight:600;margin-bottom:14px"></div>
+      <textarea id="question" class="question" placeholder="（可选）写下你此刻的问题，比如：我该不该换工作？&#10;写下来能让解读更聚焦。"></textarea>
+      <div class="hint">提示：用开放式问题效果最好（"我该如何……"），避免"是/否"式提问。</div>
+    </div>
+    <div class="actions">
+      <button class="btn-main" onclick="startShuffle()">开始洗牌</button>
+      <button class="btn-ghost" onclick="go('screen-spread')">重选牌阵</button>
+    </div>
+  </section>
+
+  <section id="screen-pick" class="screen">
+    <div class="card">
+      <div id="qDisplay" class="q-display"></div>
+      <div class="countbar">请凭直觉点选 <span id="needCount">3</span> 张牌</div>
+      <div class="hint" style="margin-bottom:14px">已选 <b id="pickedCount">0</b> 张 · 牌已打乱，正逆位随机</div>
+      <div id="cardGrid" class="grid"></div>
+    </div>
+    <div class="actions">
+      <button id="revealBtn" class="btn-main" disabled onclick="reveal()">展开解读</button>
+      <button class="btn-ghost" onclick="go('screen-question')">上一步</button>
+    </div>
+  </section>
+
+  <section id="screen-reading" class="screen">
+    <div class="card">
+      <div id="qDisplay2" class="q-display"></div>
+      <div id="revealRow" class="reveal-row"></div>
+      <div id="readingList"></div>
+    </div>
+    <div id="summaryBox"></div>
+    <div class="actions">
+      <button class="btn-main" onclick="restart()">再抽一次</button>
+      <button class="btn-ghost" onclick="go('screen-spread')">换个牌阵</button>
+    </div>
+  </section>
+
+  <div class="footer">塔罗是一种自我探索的工具，不是为了替你决定人生 ✦<br>请把它当作一面镜子，而非预言</div>
+</div>
+
+<script>
+/* ============ 牌阵 ============ */
+const SPREADS = [
+  { id:'single', name:'单张牌 · 每日一占', cards:1,
+    desc:'最快最直接的牌阵，直击当下最核心的能量或盲点。',
+    good:'今日运势、快速判定、行动前的一个信号', bad:'需要多视角的复杂问题',
+    guide:'把这一张牌当作今天的一面镜子，问自己：它在提醒我什么？',
+    positions:[{label:'当下核心', ask:'此刻最核心的能量或盲点', tie:'它直指你眼下最需要看见的那件事。'}] },
+  { id:'three', name:'三张牌 · 过去现在未来', cards:3,
+    desc:'经典时间线牌阵，看清一件事的来龙去脉与发展方向。',
+    good:'趋势判断、因果分析、关系走向', bad:'需要多视角的复杂问题',
+    guide:'把「过去 → 现在 → 未来」连成一条时间线读：先看根源，再看状态，最后看趋势指向。',
+    positions:[
+      {label:'过去', ask:'影响当前的关键背景与根源', tie:'它说明这段过往，正是塑造你此刻处境的伏笔。'},
+      {label:'现在', ask:'当下的真实状态', tie:'这描述了你眼下的真实能量，也是你着手改变的起点。'},
+      {label:'未来', ask:'接下来可能的发展方向', tie:'如果保持现在的趋势，事情大致会朝这个方向流动。'}] },
+  { id:'triangle', name:'圣三角 · 起因现状结果', cards:3,
+    desc:'从根源到结果的三角结构，适合梳理一件事的完整脉络。',
+    good:'综合问题、看清全貌', bad:'—',
+    guide:'顺着「起因 → 现状 → 结果」推：是什么引发了它？现在卡在哪？照此下去会走向何处？',
+    positions:[
+      {label:'起因', ask:'这件事最初的起因或动机', tie:'它揭示了事情的源头，也解释了为什么会变成现在这样。'},
+      {label:'现状', ask:'此刻的真实处境', tie:'这是你当前所处的位置，是承上启下的关键一环。'},
+      {label:'结果', ask:'照此发展可能的结果', tie:'如果你不做出改变，这很可能就是事情将要抵达的地方。'}] },
+  { id:'decision', name:'决策牌阵 · 二选一', cards:5,
+    desc:'两难抉择专用，同时看清两个选项的前景与背后的隐藏因素。',
+    good:'留下还是离开、接受还是拒绝、冒险还是求稳', bad:'独立个人问题',
+    guide:'先看中间的「问题核心」，再把「A的前景」与「B的前景」摆在一起比较，最后看各自的「隐藏因素」——那往往是左右你决定的关键。',
+    positions:[
+      {label:'问题核心', ask:'这个抉择真正的核心是什么', tie:'它点破了你纠结背后真正的症结，比表面选项更重要。'},
+      {label:'选项A的前景', ask:'如果选择A，会走向怎样的前景', tie:'这描绘了选项A大致会带你去的方向。'},
+      {label:'选项B的前景', ask:'如果选择B，会走向怎样的前景', tie:'这描绘了选项B大致会带你去的方向。'},
+      {label:'A的隐藏因素', ask:'选A时你没注意到的关键', tie:'这一点藏在A背后，很可能才是决定成败的关键。'},
+      {label:'B的隐藏因素', ask:'选B时你没注意到的关键', tie:'这一点藏在B背后，很可能才是决定成败的关键。'}] },
+  { id:'relationship', name:'爱情关系牌阵', cards:7,
+    desc:'同时照见你、对方与关系本身，感情问题最全面的一面镜子。',
+    good:'感情、暧昧、冷战、分手边缘', bad:'独立个人问题',
+    guide:'把牌分三层看：上层是「你」和「对方」各自的状态；中层是「关系核心」与「深层纽带」；下层是「隐藏障碍」「走向」和「给你的建议」。',
+    positions:[
+      {label:'你的状态', ask:'你在这段关系里的真实状态', tie:'它反映了你此刻在关系中的能量与心态。'},
+      {label:'对方的状态', ask:'对方目前的状态与感受', tie:'它映照出对方此时可能的处境与心意。'},
+      {label:'关系核心', ask:'这段关系的本质是什么', tie:'这是你们关系的核心质地，决定了它能走多远。'},
+      {label:'深层纽带', ask:'把你们连在一起的深层东西', tie:'这是维系你们的真正纽带，是关系的根基。'},
+      {label:'隐藏障碍', ask:'暗藏在关系里的障碍', tie:'这是尚未被摊开、却正在悄悄影响你们的因素。'},
+      {label:'关系走向', ask:'关系自然发展的方向', tie:'若维持现状，关系大致会朝这个方向走。'},
+      {label:'给你的建议', ask:'这段关系想给你的提醒', tie:'这是牌面想对你说的最后一句话，请认真听。'}] },
+  { id:'celtic', name:'凯尔特十字 · 全景剖析', cards:10,
+    desc:'最经典的深度牌阵，绘制出所有相互作用的力量。',
+    good:'复杂问题的深度综合剖析', bad:'快速决策、初学者（牌多易乱）',
+    guide:'先读中间的十字（现状→阻碍/助力→根源→过去→目标），再读右边的柱子（近期未来→最终结果），最后看周围（你的态度、外界影响、希望与恐惧）。',
+    positions:[
+      {label:'现状', ask:'事情现在的核心状况', tie:'这是整件事的立足点，其他牌都围绕它展开。'},
+      {label:'阻碍或助力', ask:'横在你面前的力量', tie:'它可能是阻力，也可能是助力，是你能否跨过去的关键。'},
+      {label:'根源', ask:'事情更深层的源头', tie:'它埋在地基里，解释了表面现象背后的来由。'},
+      {label:'过去', ask:'刚刚过去的、正在远去的影响', tie:'它正在退场，但余波仍影响着现在。'},
+      {label:'目标', ask:'你意识层面想要的', tie:'这是你心里明确想要达成的方向。'},
+      {label:'近期未来', ask:'不久之后会发生什么', tie:'它提示了接下来这段时间的走向。'},
+      {label:'你的态度', ask:'你自己看待这件事的方式', tie:'这反映了你的立场与内在姿态，你并非旁观者。'},
+      {label:'外界影响', ask:'他人或环境带来的影响', tie:'这是来自你之外的力量，别忽略了它的存在。'},
+      {label:'希望与恐惧', ask:'你内心深处的期待与担忧', tie:'希望与恐惧往往是一体两面，这张牌同时照出了它们。'},
+      {label:'最终结果', ask:'综合以上力量的最终落点', tie:'这是所有力量交汇后的答案，但记住——它并非不可更改。'}] }
+];
+
+/* ============ 大阿尔卡纳：[名称, 编号, 符号, 正关键词, 逆关键词, 正详解, 逆详解] ============ */
+const MAJORS = [
+['愚人','0','✨','新的开始/冒险/自由/天真','鲁莽/盲目/逃避/缺乏方向',
+ '你正站在全新旅程的起点，前方没有地图，但你带着天真的勇气。放下过度计算，允许自己轻装上路——好运往往偏爱先迈出第一步的人。',
+ '你可能在冲动行事，或因害怕而迟迟不敢启程。先停下来看清方向：别把鲁莽当勇敢，也别把逃避包装成"随缘"。'],
+['魔术师','I','🎩','创造力/行动力/掌控资源','欺骗/能力不足/空谈',
+ '你已具备做成这件事所需的全部资源，缺的只是行动。集中注意力，把想法转化为具体的第一步，你有能力主导局面。',
+ '能力被浪费，或有人（包括你自己）在耍手段、说空话。检查是否有华而不实的承诺，回到踏实的执行上。'],
+['女祭司','II','🌙','直觉/潜意识/内在智慧','忽视直觉/压抑/隐瞒',
+ '答案不在外面，而在你心里。安静下来，信任直觉与潜意识给你的信号，比急着行动更重要。',
+ '你在忽视内心真实的声音，或被表象迷惑。可能有些事被隐瞒了，也可能你只是不愿意面对自己的感受。'],
+['皇后','III','🌹','丰盛/滋养/母性/创造力','依赖/过度保护/忽略自我',
+ '丰盛与滋养的能量正在流动。好好照顾自己，也照顾好你在意的人和事，创造力与爱会自然生长。',
+ '你可能在过度付出而忽略了自己，或创造力陷入枯竭。先把自己喂饱，再谈给予别人。'],
+['皇帝','IV','👑','权威/秩序/稳定/掌控','专制/固执/失控',
+ '需要秩序、规则与权威来稳住局面。别害怕承担责任，用结构与纪律把事情落地。',
+ '局面可能因过度控制或固执而僵化。检查你是不是太想掌控一切，反而把路堵死了。'],
+['教皇','V','📜','传统/指引/信仰/教导','教条/叛逆/被规则束缚',
+ '传统的智慧与前人的指引值得参考。此时适合遵循已有的规则和可靠的经验，而非标新立异。',
+ '你在挑战旧规则，或感到被条条框框捆住。小心两种极端：一味盲从，和为叛逆而叛逆。'],
+['恋人','VI','💕','爱/结合/选择/和谐','犹豫/分离/价值冲突',
+ '深刻的情感连接、伙伴关系，或一个关乎价值观的重要选择。倾听内心，选那个让你完整的方向。',
+ '关系出现裂痕、犹豫不决，或价值观产生冲突。可能需要在两难中诚实面对自己真正要什么。'],
+['战车','VII','🏇','意志/胜利/前进/掌控方向','失控/方向不明/停滞',
+ '依靠强大的意志力，你能驾驭局面、向前推进。方向已定，现在就出发，保持专注别分心。',
+ '动力分散或方向不明，事情停滞。先停下来重新校准目标，别用蛮力硬冲。'],
+['力量','VIII','🦁','勇气/柔韧/内在力量','自我怀疑/软弱/急躁',
+ '真正的强大不是硬碰硬，而是以柔克刚、有耐心地驯服内在的冲动。你有能力温和而坚定地掌控局面。',
+ '自我怀疑或情绪失控让你使不上劲。先安抚内心的焦躁，力量会回来。'],
+['隐士','IX','🕯️','内省/独处/寻找答案','孤立/逃避/拒绝帮助',
+ '该独处、向内看了。退出喧嚣，安静地思考，答案会在独处中浮现。',
+ '过度孤立，或把自己封闭起来拒绝帮助。独处是为了充电，不是为了逃避世界。'],
+['命运之轮','X','🎡','转机/循环/机遇/命运流转','厄运/失控/时机未到',
+ '时来运转，命运的齿轮开始转动。抓住这个转机，顺势而为。',
+ '事情陷入低谷或循环轮回。与其抗拒变化，不如接受周期，等待时机重新上升。'],
+['正义','XI','⚖️','公平/因果/真相/责任','不公/逃避责任/失衡',
+ '因果分明，真相会水落石出。此时要讲公平、负责任，做符合原则的决定。',
+ '不公、逃避责任，或天平失衡。检查是不是有人在钻空子，或是你欠了自己一个交代。'],
+['倒吊人','XII','🙃','暂停/换位思考/牺牲/等待','拖延/无谓牺牲/僵局',
+ '需要暂停与换位思考。眼前的停顿不是白费，换个角度看，可能会有全新的领悟。',
+ '无谓的牺牲，或陷入僵局不肯动弹。别为了等一个完美时机而浪费时间。'],
+['死神','XIII','💀','结束/转变/放下/重生','抗拒改变/停滞/无法放手',
+ '一个阶段正在结束，随之而来的是深刻的转变。放下已经不属于你的东西，才能迎来重生。',
+ '你在抗拒必要的改变，抱着旧事物不肯松手。抗拒只会让阵痛更久。'],
+['节制','XIV','🏺','平衡/调和/耐心/中庸','失衡/极端/缺乏耐心',
+ '平衡、调和与耐心是关键。把对立的元素融合起来，用中庸之道慢慢走远。',
+ '失衡、极端，或缺乏耐心。检查你在哪方面用力过猛，给自己找个中间点。'],
+['恶魔','XV','😈','束缚/欲望/执念/诱惑','解脱/觉醒/挣脱',
+ '你被某种欲望、执念或束缚绑住了——可能是关系，可能是习惯。看清枷锁，它多半是你自己套上的。',
+ '觉醒与解脱的时刻到了。你开始挣脱束缚，重新拿回对自己的掌控。'],
+['塔','XVI','🗼','剧变/崩塌/觉醒/破而后立','逃避灾难/延迟崩塌',
+ '剧变猝不及防，旧结构崩塌。虽然痛苦，但它清除了本就摇摇欲坠的东西，为重建腾出空间。',
+ '你在拼命维持一个早该改变的局面。逃避崩塌，只会让损失更大。'],
+['星星','XVII','⭐','希望/疗愈/灵感/信心','失望/信心不足/迷茫',
+ '希望、疗愈与灵感。风雨过后，你重新找回信心，沿着星光慢慢走就好。',
+ '信心不足、感到迷茫。别急着否定自己，疗愈需要时间。'],
+['月亮','XVIII','🌕','幻象/不安/潜意识/迷雾','真相浮现/恐惧消散',
+ '迷雾重重，真假难辨。此刻情绪容易放大恐惧，别急着下结论，先让真相浮出水面。',
+ '迷雾散去，恐惧被证伪，你终于看清了事情的真相。'],
+['太阳','XIX','☀️','成功/喜悦/活力/光明','暂时受挫/过于乐观',
+ '成功、喜悦与活力。事情进展顺利，尽情享受这份光明与成就吧。',
+ '暂时的阴霾，或过于乐观。顺境里也要留一分清醒。'],
+['审判','XX','📯','觉醒/重生/召唤/清算','逃避/拖延/听不见召唤',
+ '觉醒与重生的时刻。你听见了内心的召唤，是时候清算过去、做出重要的决断了。',
+ '逃避、拖延，或听不见自己真正的声音。别因为害怕而假装没听见。'],
+['世界','XXI','🌍','圆满/完成/整合/成就','未竟/停滞/未收尾',
+ '一个周期圆满达成，你整合了经验，站在了新的高度。享受这份完成，然后准备开启下一段旅程。',
+ '就差最后一步却未收尾。检查是什么让你无法真正完成。']
+];
+
+/* ============ 小阿尔卡纳：[等级, 正关键词, 逆关键词, 正详解, 逆详解] ============ */
+const MINOR = {
+'圣杯':[
+ ['A','新的情感/爱/直觉开启','情感封闭/错失/空虚',
+  '一颗心被打开了，新的情感、爱或直觉正在萌芽。接受这份礼物，允许自己去感受。',
+  '情感被压抑或错失，内心感到空虚。审视你是否有意无意地关上了心门。'],
+ ['二','结合/伙伴/相互吸引','分离/不平衡/误会',
+  '一段相互吸引的关系正在形成——爱情、深厚的友谊或默契的合作，彼此心意相通。',
+  '关系出现不平衡或误会，一方付出多于另一方。需要一次坦诚的沟通。'],
+ ['三','友谊/庆祝/社群','孤独/小团体/过度放纵',
+  '值得庆祝的时刻，友情与社群带来丰盛。和朋友们分享你的喜悦吧。',
+  '感到孤独，或陷入表面的热闹与过度放纵。检查哪些关系是真的在滋养你。'],
+ ['四','厌倦/冷漠/错过机会','重燃兴趣/接受机会',
+  '一种厌倦与冷漠，眼前的选项都被你忽略了。你把自己封闭起来了。',
+  '重新燃起兴趣，愿意睁眼看看被忽略的机会，倦怠感正在退去。'],
+ ['五','失落/遗憾/执着于失去','释怀/走出悲伤',
+  '失落与遗憾占据心头，你盯着已经失去的，却忽略了还拥有的。',
+  '慢慢走出悲伤，开始看见身后的那两只杯。释怀正在进行。'],
+ ['六','怀旧/童年/纯真','困在过去/幼稚',
+  '怀旧与纯真，旧日的美好回忆带来温暖。也可能是重逢，或一份来自过去的礼物。',
+  '困在过去不肯走出来，或过度理想化记忆。请活在当下。'],
+ ['七','幻想/选择太多/迷失','看清现实/做出选择',
+  '选择太多反而迷失，太多幻想让你看不清现实。需要落地。',
+  '拨开幻想，看清自己真正想要什么，准备做出选择。'],
+ ['八','离开/放下/追寻意义','留恋/无法放手',
+  '你决定离开熟悉的环境，去追寻更有意义的东西。这是一次勇敢的告别。',
+  '明知该走却舍不得，困在不满足的状态里。问问自己为何留下。'],
+ ['九','满足/愿望实现','不满足/虚荣',
+  '心愿达成，心满意足。享受这份得偿所愿的幸福吧（"愿望卡"）。',
+  '愿望实现后却感到空虚，或幸福流于表面。检查你真正想要的是什么。'],
+ ['十','圆满/家庭幸福/情感完整','家庭不睦/理想破灭',
+  '情感的圆满——家庭和睦、爱有所归。这是关系最理想的状态。',
+  '家庭或亲密关系出现裂痕，理想的情感图景被打碎，需要修补。'],
+ ['侍从','情感新消息/敏感/创意萌发','情绪化/逃避/想太多',
+  '情感上的新消息、新的心动，或创意的萌芽。保持一颗柔软好奇的心。',
+  '情绪化、逃避现实，或想太多。别被一时的情绪牵着走。'],
+ ['骑士','浪漫/追求/跟着心意走','空想/不切实际',
+  '浪漫的追求者带着爱而来，或你正跟着心意行动。理想主义的柔情。',
+  '空想多过行动，或情绪化地进退。别让浪漫冲昏了头。'],
+ ['王后','共情/直觉/关怀','情绪不稳/过度敏感',
+  '情感成熟、富有共情力，你能敏锐地感受并照顾他人。信任你的直觉。',
+  '情绪不稳、过度敏感，或为别人活到迷失自己。先照顾好自己的感受。'],
+ ['国王','情绪成熟/慈悲/掌控','情绪压抑/操控/疏离',
+  '情绪成熟而稳定，你能慈悲又不失分寸地掌控情感，是可靠的情感支柱。',
+  '情绪被压抑，或用情绪操控他人，表面平静实则疏离。诚实面对自己的感受。']
+],
+'权杖':[
+ ['A','新热情/灵感/机遇','缺乏动力/热情熄灭',
+  '一股强烈的热情与灵感被点燃，新的机遇正在招手。抓住这股冲劲，开始行动。',
+  '动力不足，计划受阻，热情熄了火。先找回做这件事的初衷。'],
+ ['二','规划/选择/远见','犹豫/缺乏规划',
+  '你站在高处展望未来，正在做规划与选择。世界在等着你去拓展。',
+  '犹豫不决，缺乏规划，原地打转。先定下方向再说。'],
+ ['三','拓展/展望/进步','停滞/目光短浅',
+  '计划开始见效，视野扩大，机会正在向你驶来。保持耐心。',
+  '进展停滞，目光短浅或计划受阻。回头检查哪一环出了问题。'],
+ ['四','庆祝/稳定/和谐','动荡/不安/根基不稳',
+  '一个阶段的圆满与庆祝，家庭与团队带来稳固的和谐。',
+  '动荡与不安，根基不稳。检查你在哪个领域缺乏安全感。'],
+ ['五','竞争/冲突/挑战','回避冲突/和解',
+  '竞争与冲突，多方争夺同一目标。把摩擦当成磨练。',
+  '冲突正在平息，或你选择回避竞争。有时退一步也是智慧。'],
+ ['六','胜利/认可/成功','落败/骄傲自满',
+  '胜利与被认可，你的努力被看见了。享受这份荣耀。',
+  '落败或得不到认可，也可能因骄傲而松懈。低调复盘。'],
+ ['七','坚守/防御/勇气','退缩/自我怀疑',
+  '你要守住自己的立场，面对挑战毫不退让。勇敢地据理力争。',
+  '招架不住想退缩，或陷入自我怀疑。评估这场仗值不值得打。'],
+ ['八','快速发展/消息/行动','延迟/混乱/失控',
+  '事情发展迅速，消息纷至沓来，行动要快。',
+  '延迟、混乱或计划失控。重新理清头绪。'],
+ ['九','坚持/韧性/戒备','疲惫/放弃',
+  '你已经走了很远，最后一关靠的是韧性。别在终点前放弃。',
+  '身心疲惫，戒备心过重，快撑不住了。该休息就休息。'],
+ ['十','重担/压力/责任过载','放下负担/学会拒绝',
+  '责任过载，你扛了太多不属于你的重担。学会分担与拒绝。',
+  '终于放下负担，卸下不属于你的责任，如释重负。'],
+ ['侍从','热情/新想法/探索','三分钟热度/拖延',
+  '新的想法点燃热情，你跃跃欲试想探索。勇敢去试。',
+  '三分钟热度、拖延，想法很多却不动手。先从一件小事开始。'],
+ ['骑士','冲劲/冒险/行动力','冲动/鲁莽',
+  '行动力强、敢冒险，你正全速冲向目标。',
+  '冲动鲁莽，不计后果。踩踩刹车，想想代价。'],
+ ['王后','自信/热情/魅力','嫉妒/强势/缺乏自信',
+  '自信、热情、充满魅力，你能温暖地鼓舞身边的人。',
+  '嫉妒、强势或缺乏自信，能量用错了地方。'],
+ ['国王','领导力/远见/魄力','专横/冲动/独断',
+  '有领导力与远见，你能扛起责任、带领众人向前。',
+  '专横、冲动、独断专行，容易一意孤行。']
+],
+'宝剑':[
+ ['A','突破/真相/清晰','混乱/错误判断',
+  '真相大白、思路豁然清晰，一个突破性的想法或决定诞生了。',
+  '思绪混乱、判断失误，或真相被扭曲。先理清思路再下结论。'],
+ ['二','僵局/回避/权衡','打破僵局/面对',
+  '你陷入僵局，蒙上眼睛不愿面对，在两个选择之间徘徊。',
+  '僵局被打破，你终于愿意睁眼面对，做出决定。'],
+ ['三','伤心/痛苦/背叛','疗愈/走出伤痛',
+  '心碎、痛苦、被背叛的感觉。允许自己难过，这是愈合的开始。',
+  '伤痛开始愈合，你慢慢走出阴影，恢复如常。'],
+ ['四','休息/静养/恢复','焦虑/无法休息',
+  '需要休息与静养，按下暂停键，让身心恢复。',
+  '焦虑难安，明明累却停不下来。强迫自己休息。'],
+ ['五','冲突/失败/损人不利己','和解/结束冲突',
+  '一场损人不利己的冲突，赢了道理却输了关系。',
+  '冲突结束，双方和解，或你选择放下争执。'],
+ ['六','过渡/离开困境','停滞/难以摆脱',
+  '过渡期，你正离开一段困境，驶向更平静的水域。',
+  '难以摆脱旧困境，或旧事纠缠不清。需要彻底放下。'],
+ ['七','欺骗/策略/隐瞒','真相暴露/坦白',
+  '有人（可能是你）在用策略、隐瞒或走捷径。留意欺骗。',
+  '真相暴露，或被识破。坦白与诚实是唯一的出路。'],
+ ['八','束缚/无力/自我设限','挣脱/重获自由',
+  '你被束缚住，感到无力——但很多绳索其实是你自己系的。',
+  '你挣脱了束缚，重获自由，看见出口就在那里。'],
+ ['九','焦虑/噩梦/忧惧','走出焦虑/希望',
+  '焦虑与忧惧缠身，深夜内耗，你担心的事被放大了。',
+  '焦虑退去，天亮之后你发现事情并没有想象中那么糟。'],
+ ['十','结束/背叛/触底','复原/触底反弹',
+  '一个痛苦的终点，事情跌到谷底。但谷底也意味着触底反弹。',
+  '复原开始，最坏的已经过去，你正在慢慢好起来。'],
+ ['侍从','好奇/新想法/警觉','多疑/口无遮拦',
+  '好奇、机敏，爱追问真相，新的想法正在形成。',
+  '多疑、口无遮拦，或散播是非。管好自己的嘴。'],
+ ['骑士','果断/快速/直来直往','鲁莽/好斗',
+  '果断、快速、直来直往，你雷厉风行地推进事情。',
+  '鲁莽好斗、咄咄逼人，容易因冲动伤人伤己。'],
+ ['王后','理性/独立/清醒','刻薄/冷酷/刀子嘴',
+  '理性、独立、清醒，你能就事论事，看穿虚伪。',
+  '刻薄、冷酷、刀子嘴，理性变成了伤人的利器。'],
+ ['国王','理智/公正/原则','专制/冷酷/滥用权力',
+  '理智、公正、有原则，你能做出清醒而公允的判断。',
+  '专制、冷酷、滥用权威，用理智压制别人的情感。']
+],
+'星币':[
+ ['A','新机会/财富/务实开端','错失机会/财务不稳',
+  '一个实实在在的新机会降临——工作、金钱或一项可以扎根的事业。把握它。',
+  '机会溜走，或财务基础不稳。审视你的资源与计划。'],
+ ['二','平衡/灵活/周转','失衡/顾此失彼',
+  '你在多件事之间灵活周转，努力维持平衡。虽然忙，但撑得住。',
+  '失衡、顾此失彼，或拆东墙补西墙。该做取舍了。'],
+ ['三','合作/技艺/被认可','缺乏合作/粗制滥造',
+  '合作顺利，你的专业与技艺被认可，大家一起把事情做好。',
+  '配合不佳、粗制滥造，或团队缺乏默契。检查合作方式。'],
+ ['四','稳定/保守/掌控','吝啬/过度执着',
+  '稳定与保守，你牢牢守住已有的资源。安全感对你很重要。',
+  '过度吝啬或执着，抓得太紧反而失去流动。学会松手。'],
+ ['五','匮乏/孤立/困境','好转/得到帮助',
+  '匮乏与孤立，你被关在门外，感到物质或情感上的贫瘠。',
+  '困境好转，有人伸出援手，你正走出寒冬。'],
+ ['六','施与受/慷慨/公平','不平衡/施舍带条件',
+  '施与受的平衡——你给予，也接受帮助。慷慨会带来公平。',
+  '施舍带着条件，或关系里存在依附与不平等。'],
+ ['七','耐心/等待收获/评估','缺乏耐心/白费功夫',
+  '耐心等待收获，你正评估投入是否值得。别急于求成。',
+  '缺乏耐心，觉得白费功夫想放弃。再等等，或重新评估。'],
+ ['八','勤奋/专注/精进','敷衍/缺乏专注',
+  '勤奋专注，你正踏实打磨技艺，一步一个脚印地精进。',
+  '敷衍、分心，或机械重复缺乏成长。找回你的专注。'],
+ ['九','独立/丰足/享受','依赖/财务不稳',
+  '独立丰足，你靠自己的努力享受优渥的生活，值得。',
+  '过度依赖他人，或财务不稳、炫耀攀比。'],
+ ['十','富足/家族/长远','短视/家庭财务问题',
+  '长久的富足与稳固的家族根基，是代代相传的丰盛。',
+  '家庭财务问题、短视，或遗产与利益纠纷。'],
+ ['侍从','学习/踏实/新技能','拖延/缺乏进展',
+  '愿意学习新技能，踏实肯干，从基础开始积累。',
+  '拖延、纸上谈兵，学而不用，进展缓慢。'],
+ ['骑士','稳健/可靠/坚持','停滞/固执',
+  '稳健可靠、有始有终，你一步一脚印，令人放心。',
+  '停滞不前或过于固执保守，错过了变化的机会。'],
+ ['王后','务实/滋养/丰盛','忽视自我/失衡',
+  '务实又滋养，你能把生活和事业都照料得井井有条。',
+  '忙于照顾一切却忽略了自己，身心失衡。'],
+ ['国王','富足/成功/稳定','贪婪/物质主义',
+  '物质上的成功与稳定，你有能力创造并守护财富。',
+  '贪婪、物质至上，或用金钱衡量一切。']
+]
+};
+
+const SUIT_SYM = {'圣杯':'🍷','权杖':'🔥','宝剑':'⚔️','星币':'🪙'};
+const SUIT_THEME = {'圣杯':'情感与关系','权杖':'行动与热情','宝剑':'想法与沟通','星币':'现实与物质'};
+const SUIT_ELEM = {'圣杯':'水','权杖':'火','宝剑':'风','星币':'土'};
+
+/* ============ 状态 ============ */
+let deck=[], spread=null, picked=[], pool=[];
+
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function buildDeck(){
+  const d=[];
+  MAJORS.forEach(m=>d.push({name:m[0],short:m[0],type:'major',num:m[1],sym:m[2],ku:m[3],kr:m[4],up:m[5],rev:m[6]}));
+  for(const s in MINOR){
+    MINOR[s].forEach(r=>d.push({name:s+r[0],short:s+r[0],type:'minor',suit:s,num:'',sym:SUIT_SYM[s],ku:r[1],kr:r[2],up:r[3],rev:r[4]}));
+  }
+  return d;
+}
+
+function renderSpreads(){
+  const box=document.getElementById('spreadList'); box.innerHTML='';
+  SPREADS.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='spread';
+    b.innerHTML=`<div><span class="name">${s.name}</span><span class="count">${s.cards}张</span></div>
+      <div class="desc">${s.desc}</div>
+      <div class="meta">✅ 适合：${s.good}<br>🚫 不适合：${s.bad}</div>`;
+    b.onclick=()=>{spread=s;document.getElementById('qSpreadName').textContent='牌阵：'+s.name+'（'+s.cards+'张）';go('screen-question');};
+    box.appendChild(b);
+  });
+}
+
+function startShuffle(){
+  deck=buildDeck();
+  shuffle(deck);
+  pool=deck.map((c,i)=>({card:c,reversed:Math.random()<0.5,id:i}));
+  shuffle(pool); // 再打乱位置
+  picked=[];
+  document.getElementById('needCount').textContent=spread.cards;
+  document.getElementById('pickedCount').textContent='0';
+  const q=document.getElementById('question').value.trim();
+  document.getElementById('qDisplay').textContent=q?('你的问题：'+q):'（未写问题，凭直觉抽牌即可）';
+  renderGrid();
+  document.getElementById('revealBtn').disabled=true;
+  go('screen-pick');
+}
+
+function renderGrid(){
+  const grid=document.getElementById('cardGrid'); grid.innerHTML='';
+  pool.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='cardback';
+    d.dataset.id=p.id;
+    d.onclick=()=>pickCard(p.id,d);
+    grid.appendChild(d);
+  });
+}
+
+function pickCard(id,el){
+  if(picked.includes(id)){picked=picked.filter(x=>x!==id);el.classList.remove('picked');}
+  else{if(picked.length>=spread.cards)return;picked.push(id);el.classList.add('picked');}
+  document.getElementById('pickedCount').textContent=picked.length;
+  document.getElementById('revealBtn').disabled=(picked.length!==spread.cards);
+}
+
+function faceHTML(c,rev){
+  return `<div class="cardface ${rev?'reversed':''}">
+    <div class="cf-num">${c.num||''}</div>
+    <div class="cf-sym">${c.sym}</div>
+    <div class="cf-nm">${c.short}</div>
+  </div>`;
+}
+
+/* 一句话总览：用人话概括这次整体感觉 */
+function overviewText(chosen){
+  let revs=0,majors=0; const suits={};
+  chosen.forEach(p=>{if(p.reversed)revs++;if(p.card.type==='major')majors++;if(p.card.suit)suits[p.card.suit]=(suits[p.card.suit]||0)+1;});
+  let s='';
+  s += (revs>chosen.length/2)?'整体感觉有点"卡"，事情不会太顺，重点是要先调整自己的心态和做法。'
+     : (revs===0?'整体感觉挺顺，你可以放心往前推进。'
+     : '有顺有阻，是"正常发挥、需要一点耐心"的局面。');
+  if(majors>=Math.ceil(chosen.length/2)) s+=' 你抽到的"重量级"牌偏多，说明这件事对你很重要，不是随便问问。';
+  const top=Object.entries(suits).sort((a,b)=>b[1]-a[1])[0];
+  if(top&&top[1]>=2) s+=' 牌面集中在「'+SUIT_THEME[top[0]]+'」，这次的重点就在这儿。';
+  return s;
+}
+
+/* 分方面解读：学业 / 事业 / 感情 / 生活 */
+function domainsHTML(chosen){
+  const D=[
+    {k:'📚 学业 / 学习', intro:'学习上，重点看"思考与积累"。', suits:['宝剑','星币']},
+    {k:'💼 事业 / 工作', intro:'事业上，重点看"行动与成果"。', suits:['权杖','星币']},
+    {k:'💗 感情 / 人际', intro:'感情上，重点看"感受与心动"。', suits:['圣杯','权杖']},
+    {k:'🌱 生活 / 健康', intro:'生活上，重点看"安心与踏实"。', suits:['星币','圣杯']}
+  ];
+  let h='';
+  D.forEach(d=>{
+    const rel=chosen.filter(p=>p.card.type==='major'||d.suits.includes(p.card.suit));
+    let body;
+    if(rel.length===0){ body='这次牌面没有特别指向这一块，先放一放，别多想。'; }
+    else{
+      body = rel.map(p=>{
+        const kw=(p.reversed?p.card.kr:p.card.ku).split('/')[0].trim();
+        return '「'+p.card.short+'」提示：'+kw;
+      }).join('；')+'。';
+      const revN=rel.filter(p=>p.reversed).length;
+      body += (revN*2>rel.length) ? ' 这块眼下不太顺，别硬来，先把基础理顺。' : ' 这块目前比较顺，可以顺势推进。';
+    }
+    h += '<div class="domain"><div class="dk">'+d.k+'</div><div>'+d.intro+body+'</div></div>';
+  });
+  return h;
+}
+
+function reveal(){
+  const chosen=picked.map(id=>pool.find(p=>p.id===id));
+  document.querySelectorAll('.overview,.hintline,.domains-title,.domain').forEach(e=>e.remove());
+  const row=document.getElementById('revealRow'); row.innerHTML='';
+  const list=document.getElementById('readingList'); list.innerHTML='';
+  let majors=0,revs=0; const suitCount={};
+  let chain='';
+
+  chosen.forEach((p,i)=>{
+    const c=p.card, isRev=p.reversed;
+    const pos=spread.positions[i]||{label:'第'+(i+1)+'张',ask:'',tie:''};
+    if(c.type==='major')majors++;
+    if(isRev)revs++;
+    if(c.suit)suitCount[c.suit]=(suitCount[c.suit]||0)+1;
+
+    row.insertAdjacentHTML('beforeend',faceHTML(c,isRev));
+
+    const kws=(isRev?c.kr:c.ku).split('/');
+    const meaning=isRev?c.rev:c.up;
+    const meta=c.type==='major'
+      ? '这是一张分量很重的"关键牌"'
+      : '这是一张和「'+SUIT_THEME[c.suit]+'」有关的牌';
+
+    chain += '· <b>【'+pos.label+'】</b> '+c.short+'（'+(isRev?'逆位':'正位')+'）—— '+kws.slice(0,3).map(k=>k.trim()).join('、')+'<br>';
+
+    const div=document.createElement('div');
+    div.className='reading-card';
+    div.innerHTML=`
+      ${faceHTML(c,isRev)}
+      <div class="body">
+        <div><span class="pos">【${pos.label}】</span>
+        <span class="cn">${c.name}</span>
+        <span class="ori ${isRev?'rev':'up'}">${isRev?'逆位':'正位'}</span></div>
+        <div class="ask">▸ 这一位在问：${pos.ask}</div>
+        <div class="tags">${kws.map(k=>'<span class="tag">'+k.trim()+'</span>').join('')}</div>
+        <div class="mean">${meaning}</div>
+        <div class="tie">✦ <b>放回牌阵里看</b>：${c.short}${isRev?'（逆位）':'（正位）'}出现在「${pos.label}」位——${pos.tie}</div>
+        <div class="meta2">${meta}</div>
+      </div>`;
+    list.appendChild(div);
+  });
+
+  // 一句话总览 + 正逆位说明
+  row.insertAdjacentHTML('beforebegin',
+    '<div class="overview"><b>一句话总览：</b>'+overviewText(chosen)+'</div>'+
+    '<div class="hintline">小提示：<b>正位</b>＝顺利、正面的能量；<b>逆位</b>＝受阻、需要留意的地方。</div>');
+
+  // 分方面解读
+  list.insertAdjacentHTML('afterend',
+    '<div class="domains-title">✦ 分方面看看（哪块有感觉就看哪块，不必全信）</div>'+domainsHTML(chosen));
+
+  const tips=[];
+  if(majors>=Math.ceil(chosen.length/2)) tips.push('<b>重量级牌偏多</b>：这件事对你来说是件大事，值得认真对待。');
+  if(revs>chosen.length/2) tips.push('<b>逆位偏多</b>：事情现在有点"堵"，多半卡在你自己的心态或做法上，先修内，别急。');
+  else if(revs===0) tips.push('<b>全部正位</b>：能量很顺，可以大胆往前走。');
+  const top=Object.entries(suitCount).sort((a,b)=>b[1]-a[1])[0];
+  if(top&&top[1]>=2) tips.push('<b>「'+top[0]+'」偏多</b>：这次占卜的重点落在「'+SUIT_THEME[top[0]]+'」上，多从这个角度想。');
+  if(spread.id==='decision') tips.push('<b>怎么选</b>：把A和B的前景对着看，重点比较两个"隐藏因素"——哪个更符合你真正想要的，而不是哪个看起来更轻松。');
+  if(spread.id==='relationship') tips.push('<b>怎么看感情</b>：先看你俩的状态是否合拍，再看"隐藏障碍"有没有被忽略，最后看"走向"和"建议"是不是指向同一个方向。');
+  if(spread.id==='celtic') tips.push('<b>怎么看这个大牌阵</b>：中间的十字讲"这件事本身"，右边的柱子讲"它会往哪走"，四周的牌讲"你和外界的处境"。');
+  tips.push('<b>怎么读</b>：先看每张牌的关键词，再把它放进"所在位置"去理解——同一张牌在"障碍位"和"结果位"意思完全不同。');
+  tips.push('<b>最后提醒</b>：塔罗照见的是当下的状态和倾向，不是定数。你的选择，永远能改变走向。');
+
+  document.getElementById('summaryBox').innerHTML =
+    '<div class="summary">'+
+    '<h3>✦ 怎么读这个牌阵</h3>'+spread.guide+
+    '<h3>✦ 逐位串一遍</h3><div class="chain">'+chain+'</div>'+
+    '<h3>✦ 综合提示</h3>· '+tips.join('<br>· ')+
+    '</div>';
+
+  const q=document.getElementById('question').value.trim();
+  document.getElementById('qDisplay2').textContent=q?('你的问题：'+q):'';
+  go('screen-reading');
+}
+
+function restart(){document.getElementById('question').value='';startShuffle();}
+renderSpreads();
+</script>
+</body>
+</html>
